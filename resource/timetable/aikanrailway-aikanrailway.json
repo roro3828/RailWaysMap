@@ -1,14 +1,14 @@
 {
     "stoptime":30,
-    "timeoffset":25,
+    "timeoffset":-15,
     "timetables":[
         {
             "id":"1101H",
-            "w":"Weekday",
+            "w":["Weekday"],
             "n":"1101H",
             "y":"Local",
             "d":"Okazaki",
-            "os":"aikanrailway.aikanrailway.006025",
+            "os":"006025.0",
             "c":2,
             "pt":[],
             "nt":[
@@ -16,8 +16,15 @@
             ],
             "tt":[
                 {
-                    "s":"aikanrailway.aikanrailway.006025",
-                    "a":""
+                    "s":"006025.0",
+                    "a":"5:31",
+                    "d":null,
+                    "r":[
+                        {
+                            "id":"0000",
+                            "dir":1
+                        }
+                    ]
                 }
             ]
         }
