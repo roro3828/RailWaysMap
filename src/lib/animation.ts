@@ -1,7 +1,8 @@
 import mapboxgl from "mapbox-gl";
-import { Pos, Train } from "./railway";
+import { Pos } from "./railway";
 import { Feature, FeatureCollection, GeoJsonProperties, Geometry, LineString, MultiLineString, MultiPoint, MultiPolygon, Point, Polygon } from "geojson";
 import { featureCollection } from "@turf/turf";
+import { Train } from "./timetable";
 
 type Animation={
     instances:Map<string,Train>,
@@ -31,7 +32,7 @@ const animation:Animation={
         return animation.instances.has(id);
     },
     start(train:Train){
-        animation.instances.set(train.trainnumber,train);
+        animation.instances.set(train.id,train);
     },
     stop(id:string){
         animation.instances.delete(id);
@@ -45,11 +46,11 @@ function loop(){
     const zoom=map.getZoom();
     const bbox=map.getBounds();
     const mapsource=map.getSource(animation.sourceid) as mapboxgl.GeoJSONSource;
-    const currenttime=Date.now();
+    const currenttime=Date.now()+32400000;
 
     const features:Feature<any>[]=[];
     animation.instances.forEach((v)=>{
-        const f=v.ani(currenttime,bbox,zoom);
+        const f=v.ani(currenttime);
         if(f!=null){
             features.push(...f);
         }

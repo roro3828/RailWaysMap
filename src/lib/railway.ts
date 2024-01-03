@@ -698,7 +698,7 @@ export class Company{
     }
 }
 
-export class Train{
+export class Traind{
     readonly trainnumber:string;
     private acceralation:number;
     public interval:number;
@@ -729,7 +729,7 @@ export class Train{
             return null;
         }
 
-        if(zoom<10){
+        if(zoom<13){
             return null;
         }
 

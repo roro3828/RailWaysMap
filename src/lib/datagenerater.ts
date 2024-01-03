@@ -1,7 +1,10 @@
 import { readFileSync, writeFileSync } from "fs";
-import { Company, Pos, RailPath, Station, Train, TrainLine, parsetoMap } from "./railway";
+import { Company, Pos, RailPath, Station, TrainLine, parsetoMap } from "./railway";
 import { neatJSON } from "neatjson";
 import { priority_queue } from "./PriorityQueue";
+import { TimeTable, Train, TrainRoute } from "./timetable";
+import { Feature } from "geojson";
+import * as turf from "@turf/turf";
 
 function makedata(){
     const data=readFileSync("resource/N02-22_RailroadSection.geojson",{encoding:"utf-8"})
@@ -115,7 +118,7 @@ function makedata(){
     })
     const json=JSON.stringify(list);
     const njson=neatJSON(JSON.parse(json),{wrap:100000,indent:"    "});
-    writeFileSync("resource/Rail.geojson",njson,{encoding:"utf-8"});
+    writeFileSync("resource/Rail.json",njson,{encoding:"utf-8"});
 
     console.log("write");
 
@@ -140,9 +143,9 @@ function geojsontorailpaths(geojson:string){
  * ルート生成
  */
 function getRoute(){
-    const rawdata=readFileSync("resource/Rail.geojson",{encoding:"utf-8"});
+    const rawdata=readFileSync("resource/Rail.json",{encoding:"utf-8"});
     const data=parsetoMap<Company>(rawdata,Company.parse);
-    const t=data.get("0126")!.getTrainline("0008")!;
+    const t=data.get("aikanrailway")!.getTrainline("aikanrailway")!;
     //console.log(JSON.stringify(t.toGeojson().features));
 
     const G=new Map<string,{s:string,d:number}[]>();
@@ -174,14 +177,16 @@ function getRoute(){
         }
     })
 
-    //const s=["005621","005682","005730.0"];
-    const s=["003768","006912","003768"];
+    const s=["006252","006208","006171","006127","006090","006025","005195"];
+    //const s=["003768","006912","003768"];
 
     for(let i=0;i<s.length;i++){
         if(!s[i].match(/\d{6}\.\d{1,100}/)){
             s[i]+=".0";
         }
     }
+
+    const tt:TrainRoute[]=[];
 
     for(let i=0;i<s.length-1;i++){
         const [stationid,index]=s[i].split(".");
@@ -218,8 +223,8 @@ function getRoute(){
             reversed.push(route.get(reversed[reversed.length-1])!);
         }
 
-        const routemap:{id:string,dir:-1|1}[]=[{id:t.stations.get(stationid)!.locations[parseInt(index)],
-            dir:
+        const routemap:{id:string,direction:-1|1}[]=[{id:t.stations.get(stationid)!.locations[parseInt(index)],
+            direction:
                 t.railpaths.get(t.stations.get(stationid)!.locations[parseInt(index)])!.end().toString()==reversed[reversed.length-1]?1:-1
         }];
 
@@ -227,31 +232,319 @@ function getRoute(){
 
             t.railpaths.forEach((v,k)=>{
                 if(v.first().toString()==reversed[i]&&v.end().toString()==reversed[i-1]){
-                    routemap.push({id:k,dir:1});
+                    routemap.push({id:k,direction:1});
                 }
                 else if(v.first().toString()==reversed[i-1]&&v.end().toString()==reversed[i]){
-                    routemap.push({id:k,dir:-1});
+                    routemap.push({id:k,direction:-1});
                 }
             })
         }
 
         const [did,dindex]=reversed[0].split(".");
         routemap.push({id:t.stations.get(did)!.locations[parseInt(dindex)],
-            dir:
+            direction:
                 t.railpaths.get(t.stations.get(did)!.locations[parseInt(dindex)])!.first().toString()==reversed[1]?1:-1
         })
-
-        console.log(routemap)
+        tt.push(new TrainRoute(s[i] as `${string}.${string}`,"00:00","00:00",routemap));
     }
+
+    console.log(JSON.stringify(tt));
 
     //console.log(JSON.stringify(Object.fromEntries(G),null,4))
 }
 
 //geojsontorailpaths(readFileSync("C:\\Users\\3828\\Downloads\\map.geojson",{"encoding":"utf-8"}))
 /*
-const rawdata=readFileSync("resource/Rail.geojson",{encoding:"utf-8"});
+const rawdata=readFileSync("resource/Rail.json",{encoding:"utf-8"});
 const data=parsetoMap<Company>(rawdata,Company.parse);
 writeFileSync("test.geojson",JSON.stringify(data.get("aikanrailway")?.getTrainlinesGeoJson().features,null,4));
 //*/
 
-getRoute();
+function testtimetable(){
+    const rawdata=readFileSync("resource/Rail.json",{encoding:"utf-8"});
+    const data=parsetoMap<Company>(rawdata,Company.parse);
+    const t=data.get("aikanrailway")!.getTrainline("aikanrailway")!;
+    const tt=Train.parse({
+        "id":"1101H",
+        "w":["Weekday"],
+        "n":"1101H",
+        "y":"Local",
+        "d":"Okazaki",
+        "os":"006025.0",
+        "c":2,
+        "pt":[],
+        "nt":[
+            "1115H"
+        ],
+        "tt":[
+            {
+                "s": "006252.0",
+                "a": "00:16",
+                "d": "00:15",
+                "r": [
+                    {
+                        "id": "0045",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0039",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0037",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0040",
+                        "dir": 1
+                    }
+                ]
+            },
+            {
+                "s": "006208.0",
+                "a": "00:18",
+                "d": "00:17",
+                "r": [
+                    {
+                        "id": "0040",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0041",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0042",
+                        "dir": 1
+                    }
+                ]
+            },
+            {
+                "s": "006171.0",
+                "a": "00:20",
+                "d": "00:19",
+                "r": [
+                    {
+                        "id": "0042",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0044",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0046",
+                        "dir": 1
+                    }
+                ]
+            },
+            {
+                "s": "006127.0",
+                "a": "00:22",
+                "d": "00:21",
+                "r": [
+                    {
+                        "id": "0046",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0043",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0030",
+                        "dir": 1
+                    }
+                ]
+            },
+            {
+                "s": "006090.0",
+                "a": "00:24",
+                "d": "00:23",
+                "r": [
+                    {
+                        "id": "0030",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0025",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0015",
+                        "dir": -1
+                    }
+                ]
+            },
+            {
+                "s": "006025.0",
+                "a": "00:26",
+                "d": "00:25",
+                "r": [
+                    {
+                        "id": "0015",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0019",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0016",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0026",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0024",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0007",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0020",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0006",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0012",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0008",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0023",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0022",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0000",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0013",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0002",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0032",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0001",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0011",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0036",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0033",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0035",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0017",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0010",
+                        "dir": 1
+                    },
+                    {
+                        "id": "0009",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0021",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0004",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0031",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0028",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0005",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0034",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0018",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0027",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0014",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0003",
+                        "dir": -1
+                    },
+                    {
+                        "id": "0029",
+                        "dir": 1
+                    }
+                ]
+            }
+        ]
+    });
+
+    tt.trainline=t;
+
+    for(let i=0;i<300;i++){
+        tt.ani(i*60*100);
+    }
+
+}
+
+function makeGeojson(){
+    const rawdata=readFileSync("resource/Rail.json",{encoding:"utf-8"});
+    const data=parsetoMap<Company>(rawdata,Company.parse);
+    
+    const rails:Feature<any>[]=[];  
+
+    data.forEach((v)=>{
+        rails.push(...v.getTrainlinesGeoJson().features);
+    });
+
+    writeFileSync("resource/Rail.geojson",JSON.stringify(turf.featureCollection(rails)),{encoding:"utf-8"})
+}
+
+testtimetable();

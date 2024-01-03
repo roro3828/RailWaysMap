@@ -3,11 +3,11 @@ import { useEffect, useState, useRef } from 'react';
 import mapboxgl, { GeoJSONSource } from 'mapbox-gl';
 import MapboxLanguage from '@mapbox/mapbox-gl-language';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Company, RailPath, Train, parsetoMap } from '@/lib/railway';
+import { Company, RailPath, parsetoMap } from '@/lib/railway';
 import * as turf from "@turf/turf";
 import { Feature } from 'geojson';
 import animation from '@/lib/animation';
-import {GET} from "@/app/api/route"
+import { Train, TrainRoute } from '@/lib/timetable';
 
 
 
@@ -38,10 +38,11 @@ export default function SimpleMap() {
         }) => {
             const map = new mapboxgl.Map({
                 container: mapContainer.current,
-                center: [139.7670516, 35.6811673], // 東京駅を初期値点として表示（緯度、経度を指定）
+                center: [136.88182959193895,35.17103308865671],
                 zoom: 15,
                 maxPitch:0,
-                style: 'mapbox://styles/mapbox/light-v10',
+                minZoom:5,
+                style: 'mapbox://styles/roro3828/clqvrjl0v005c01pmgmb62axt',
             });
             // 言語変更設定参考
             // defaultLanguageとしてjaを指定
@@ -50,7 +51,29 @@ export default function SimpleMap() {
 
             map.on('load', () => {
                 setMap(map);
-                map.resize();
+                map.resize();const animationsourceid="ani";
+                map.addSource(
+                    animationsourceid,
+                    {
+                        "type":"geojson",
+                        "data":{
+                            "type": "FeatureCollection",
+                            "features": []
+                        }
+                    }
+                )
+                map.addLayer({
+                    'id':animationsourceid,
+                    'source':animationsourceid,
+                    'type': 'circle',
+                    "layout":{
+                        "visibility":"visible"
+                    },
+                    'paint': {
+                        'circle-radius': 10,
+                        'circle-color': ["get","color"],
+                    }
+                });
                 loadSource("map");
             });
 
@@ -66,21 +89,11 @@ export default function SimpleMap() {
         if (!map) initializeMap({ setMap, mapContainer });
     }, [map]);
 
-    if(isLoading){
-        return(
-            <>
-                <div ref={mapContainer} className='w-full h-screen'></div>
-                <div>Loading...</div>
-            </>
-        )
-    }
-    else{
-        return (
-            <>
-                <div ref={mapContainer} className='w-full h-screen' />
-            </>
-        );
-    }
+    return (
+        <>
+            <div ref={mapContainer} className='w-full h-screen' />
+        </>
+    );
 
 
     function loadSource(c:string){
@@ -91,64 +104,172 @@ export default function SimpleMap() {
             return;
         }
         console.log(`load from ${c}`);
-        const rails:Feature<any>[]=[];  
-
-        railways.forEach((v)=>{
-            rails.push(...v.getTrainlinesGeoJson().features);
-
-            v.trainlines.forEach((t)=>{
-                t.railpaths.forEach((r)=>{
-                    animation.start(new Train(v.id+"-"+t.id+r.id,0.0001,r,t.color));
-                })
-            })
+        const tt=Train.parse({
+            "id":"1101H",
+            "w":["Weekday"],
+            "n":"1101H",
+            "y":"Local",
+            "d":"Okazaki",
+            "os":"006025.0",
+            "c":2,
+            "pt":[],
+            "nt":[
+                "1115H"
+            ],
+            "tt":[
+                {
+                    "s": "006025.0",
+                    "d": "23:50",
+                    "a": "23:59",
+                    "r": [
+                        {
+                            "id": "0015",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0019",
+                            "dir": 1
+                        },
+                        {
+                            "id": "0016",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0026",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0024",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0007",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0020",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0006",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0012",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0008",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0023",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0022",
+                            "dir": 1
+                        },
+                        {
+                            "id": "0000",
+                            "dir": 1
+                        },
+                        {
+                            "id": "0013",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0002",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0032",
+                            "dir": 1
+                        },
+                        {
+                            "id": "0001",
+                            "dir": 1
+                        },
+                        {
+                            "id": "0011",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0036",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0033",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0035",
+                            "dir": 1
+                        },
+                        {
+                            "id": "0017",
+                            "dir": 1
+                        },
+                        {
+                            "id": "0010",
+                            "dir": 1
+                        },
+                        {
+                            "id": "0009",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0021",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0004",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0031",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0028",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0005",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0034",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0018",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0027",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0014",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0003",
+                            "dir": -1
+                        },
+                        {
+                            "id": "0029",
+                            "dir": 1
+                        }
+                    ]
+                }
+            ]
         });
-
-        const railsourceid="rail";
-        map.addSource(
-            railsourceid,
-            {
-                "type":"geojson",
-                "data":turf.featureCollection(rails)
-            }
-        );
-        map.addLayer({
-            "id":railsourceid,
-            "type":"line",
-            "source":railsourceid,
-            "layout":{
-                "line-join":"round",
-                "line-cap":"round",
-                "visibility":"visible"
-            },
-            "paint":{
-                "line-width":["get","width"],
-                "line-color":["get","color"]
-            }
-        });
+        tt.trainline=railways.get("aikanrailway")!.getTrainline("aikanrailway")!;
+        animation.start(tt);
 
         const animationsourceid="ani";
-        map.addSource(
-            animationsourceid,
-            {
-                "type":"geojson",
-                "data":{
-                    "type": "FeatureCollection",
-                    "features": []
-                }
-            }
-        )
-        map.addLayer({
-            'id':animationsourceid,
-            'source':animationsourceid,
-            'type': 'circle',
-            "layout":{
-                "visibility":"visible"
-            },
-            'paint': {
-                'circle-radius': 10,
-                'circle-color': ["get","color"],
-            }
-        });
         animation.init(map,animationsourceid);
         setLoading(false);
 

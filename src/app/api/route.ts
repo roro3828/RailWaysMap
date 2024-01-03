@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-    const data=readFileSync("resource/Rail.geojson",{encoding:"utf-8"});
+    const data=readFileSync("resource/Rail.json",{encoding:"utf-8"});
     const ddd=parsetoMap<Company>(data,Company.parse);
 
     let list:Company[]=[]
