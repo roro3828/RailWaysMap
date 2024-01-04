@@ -7,7 +7,7 @@ export class TimeTable{
 
 }
 
-type DayType="Weekday"|"Saturday"|"Holiday";
+export type DayType="Weekday"|"Saturday"|"Holiday";
 
 export class Train{
     readonly id:string;
@@ -47,8 +47,9 @@ export class Train{
 
     readonly timetable:TrainRoute[];
 
-    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,originstation:string)
-    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,originstation:string,homeindex?:number,color?:Color){
+    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,originstation:string);
+    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,originstation:string,color:Color,homeindex:number);
+    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,originstation:string,color?:Color,homeindex?:number){
         this.id=id;
         this.daytype=daytype;
         this.trainnumber=trainnumber;
@@ -77,7 +78,7 @@ export class Train{
         const t=timestamp%86400000;
         let route:TrainRoute=this.timetable[0];
 
-        for(let i=this.timetable.length-2;0<=i;i--){
+        for(let i=this.timetable.length-1;0<=i;i--){
             if(this.timetable[i].departuretime<t){
                 route=this.timetable[i];
                 break;
@@ -88,10 +89,10 @@ export class Train{
             "color":this.color.toString()
         };
         const pos=route.getPos(t,this.trainline!);
-        console.log(pos.toString()+",")
+        //console.log(pos.toString()+",")
 
         const geo=turf.geometry("Point",[pos.lng,pos.lat]);
-        return [turf.feature(geo,pos)];
+        return [turf.feature(geo,param)];
     }
 
     public static parse(any:any):Train{
@@ -117,8 +118,8 @@ export class Train{
             if(typeof any["os"]!=="string"){
                 throw Error("\"os\" not found.");
             }
-            if(typeof any["c"]!=="number"){
-                throw Error("\"c\" not found.");
+            if(typeof any["cn"]!=="number"){
+                throw Error("\"cn\" not found.");
             }
             if(!Array.isArray(any["tt"])){
                 throw Error("\"tt\" is not set");
@@ -128,8 +129,27 @@ export class Train{
             for(let i=0;i<any["tt"].length;i++){
                 tt.push(TrainRoute.parse(any["tt"][i]));
             }
+            const color=new Color(any["c"]);
 
-            return new Train(any["id"],tt,any["w"],any["n"],any["y"],any["d"],any["c"],any["os"]);
+            return new Train(any["id"],tt,any["w"],any["n"],any["y"],any["d"],any["cn"],any["os"],color,0);
+        }
+    }
+
+    /**
+     * JSON化
+     * @returns Json
+     */
+    toJSON(){
+        return{
+            "id":this.id,
+            "w":this.daytype,
+            "n":this.trainnumber,
+            "y":this.type,
+            "d":this.destination,
+            "os":this.originstation,
+            "c":this.color,
+            "cn":this.car,
+            "tt":this.timetable
         }
     }
 }
@@ -140,7 +160,8 @@ export class Train{
  * 設定項目はルートと
  */
 export class TrainRoute{
-    readonly station:`${string}.${string}`;
+    readonly station:string;
+    readonly homeindex:number;
 
     /**
      * 発車時刻 ms
@@ -163,18 +184,17 @@ export class TrainRoute{
      */
     readonly routelength:number[];
 
-    constructor(station:`${string}.${string}`,departuretime:string|number,arrivaltime:string|number,route:{id:string,direction:-1|1}[]){
+    constructor(station:string,homeindex:number,departuretime:string|number,arrivaltime:string|number,route:{id:string,direction:-1|1}[]){
         this.station=station;
+        this.homeindex=homeindex;
         if(typeof arrivaltime==="string"){
-            const [h,m]=arrivaltime.split(":");
-            this.arrivaltime=((parseInt(h)*3600+parseInt(m)*60)*1000)%86400000;
+            this.arrivaltime=TrainRoute.stringtoTime(arrivaltime)%86400000;
         }
         else{
             this.arrivaltime=arrivaltime%86400000;
         }
         if(typeof departuretime==="string"){
-            const [h,m]=departuretime.split(":");
-            this.departuretime=((parseInt(h)*3600+parseInt(m)*60)*1000)%86400000;
+            this.departuretime=TrainRoute.stringtoTime(departuretime)%86400000;
         }
         else{
             this.departuretime=departuretime%86400000;
@@ -215,7 +235,8 @@ export class TrainRoute{
                     })
                 }
             }
-            return new TrainRoute(any["s"],any["d"],any["a"],route);
+            const homeindex=typeof any["i"]==="number"?any["i"]:0;
+            return new TrainRoute(any["s"],homeindex,any["d"],any["a"],route);
 
         }
     }
@@ -278,6 +299,28 @@ export class TrainRoute{
         return pos;
     }
 
+    /**
+     * hh:mm:ss形式の文字列をmsに変換
+     * @param hhmmss 
+     * @returns ms
+     */
+    public static stringtoTime(hhmmss:string){
+        const [h,m,ss]=hhmmss.split(":");
+        const s=typeof ss==="undefined"?0:parseInt(ss);
+        return (parseInt(h)*3600+parseInt(m)*60+s)*1000;
+    }
+    /**
+     * ms時間をhh:mm:ss形式の文字列に変換
+     * @param time 
+     */
+    public static TimetoString(time:number){
+        time=Math.floor(time/1000);
+        const s=time%60;
+        const m=Math.floor(time/60)%60;
+        const h=Math.floor(time/3600);
+        return ("00"+h.toString()).slice(-2)+":"+("00"+m.toString()).slice(-2)+":"+("00"+s.toString()).slice(-2);
+    }
+
 
     /**
      * JSON化
@@ -286,8 +329,9 @@ export class TrainRoute{
     toJSON(){
         return{
             "s":this.station,
-            "d":this.departuretime,
-            "a":this.arrivaltime,
+            "d":TrainRoute.TimetoString(this.departuretime),
+            "a":TrainRoute.TimetoString(this.arrivaltime),
+            "i":this.homeindex,
             "r":this.route.map((v)=>{
                 return {id:v.id,dir:v.direction};
             })

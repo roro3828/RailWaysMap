@@ -10,23 +10,40 @@ import animation from '@/lib/animation';
 import { Train, TrainRoute } from '@/lib/timetable';
 
 
-
 export default function SimpleMap() {
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_KEY??"";
     const mapContainer = useRef(null);
     const [map, setMap] = useState<mapboxgl.Map|null>(null);
+    const [isLoading,setLoading]=useState<boolean>(true);
 
     /**
      * 鉄道データ取得
      */    
-    const [railways, setData]=useState<Map<string,Company>|null>(null);
-    const [isLoading, setLoading]=useState(true);
+    const [railways, setRailways]=useState<Map<string,Company>|null>(null);
+
     useEffect(()=>{
+        if(railways!=null){
+            return;
+        }
         fetch(`/api`).then((response)=>response.json()).then((value)=>{
-            setData(parsetoMap<Company>(value["data"],Company.parse));
-            loadSource("fetch");
+            setRailways(parsetoMap<Company>(value["data"],Company.parse));
         });
-    },[map]);
+    },[railways]);
+
+    /**
+     * 時刻表データ取得
+     */
+    const [paths,setPaths]=useState<string[]|null>(null);
+    useEffect(()=>{
+        if(paths!=null){
+            return;
+        }
+        fetch('/data/timetables').then((response)=>response.json()).then((value)=>{
+            setPaths(value["data"]);
+        });
+    },[paths]);
+
+
 
     useEffect(() => {
         const initializeMap = ({
@@ -74,7 +91,6 @@ export default function SimpleMap() {
                         'circle-color': ["get","color"],
                     }
                 });
-                loadSource("map");
             });
 
             map.on("click",(e)=>{
@@ -89,6 +105,10 @@ export default function SimpleMap() {
         if (!map) initializeMap({ setMap, mapContainer });
     }, [map]);
 
+    useEffect(()=>{
+        loadSource();
+    },[map,railways,paths]);
+
     return (
         <>
             <div ref={mapContainer} className='w-full h-screen' />
@@ -96,182 +116,34 @@ export default function SimpleMap() {
     );
 
 
-    function loadSource(c:string){
-        if(map==null||railways==null){
+    function loadSource(){
+        if(map==null||railways==null||paths==null){
             return;
         }
         if(!isLoading){
             return;
         }
-        console.log(`load from ${c}`);
-        const tt=Train.parse({
-            "id":"1101H",
-            "w":["Weekday"],
-            "n":"1101H",
-            "y":"Local",
-            "d":"Okazaki",
-            "os":"006025.0",
-            "c":2,
-            "pt":[],
-            "nt":[
-                "1115H"
-            ],
-            "tt":[
-                {
-                    "s": "006025.0",
-                    "d": "23:50",
-                    "a": "23:59",
-                    "r": [
-                        {
-                            "id": "0015",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0019",
-                            "dir": 1
-                        },
-                        {
-                            "id": "0016",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0026",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0024",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0007",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0020",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0006",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0012",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0008",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0023",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0022",
-                            "dir": 1
-                        },
-                        {
-                            "id": "0000",
-                            "dir": 1
-                        },
-                        {
-                            "id": "0013",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0002",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0032",
-                            "dir": 1
-                        },
-                        {
-                            "id": "0001",
-                            "dir": 1
-                        },
-                        {
-                            "id": "0011",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0036",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0033",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0035",
-                            "dir": 1
-                        },
-                        {
-                            "id": "0017",
-                            "dir": 1
-                        },
-                        {
-                            "id": "0010",
-                            "dir": 1
-                        },
-                        {
-                            "id": "0009",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0021",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0004",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0031",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0028",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0005",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0034",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0018",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0027",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0014",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0003",
-                            "dir": -1
-                        },
-                        {
-                            "id": "0029",
-                            "dir": 1
-                        }
-                    ]
-                }
-            ]
-        });
-        tt.trainline=railways.get("aikanrailway")!.getTrainline("aikanrailway")!;
-        animation.start(tt);
+        console.log(`load`);
 
         const animationsourceid="ani";
         animation.init(map,animationsourceid);
         setLoading(false);
+        loadTrains();
+    }
 
+    function loadTrains(){
+        for(let i=0;i<paths!.length;i++){
+            console.log(paths![i]);
+            fetch(`/data/timetables/${paths![i]}`).then((response)=>response.json()).then((value)=>{
+                const trainline=railways!.get(value["data"]["c"])!.getTrainline(value["data"]["t"])!;
+                const trains=value["data"]["tt"] as any[];
+                for(let t=0;t<trains.length;t++){
+                    const train=Train.parse(trains[t]);
+                    train.trainline=trainline;
+                    animation.start(train);
+                }
+            });
+        }
     }
 }
+
