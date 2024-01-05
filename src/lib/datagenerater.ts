@@ -136,7 +136,7 @@ function geojsontorailpaths(geojson:string){
         )
     }
 
-    console.log(JSON.stringify(r));
+    return r;
 }
 
 /**
@@ -339,23 +339,9 @@ const rawdata=readFileSync("resource/Rail.json",{encoding:"utf-8"});
 const data=parsetoMap<Company>(rawdata,Company.parse);
 makeTrains(data.get("aikanrailway")!.getTrainline("aikanrailway")!,"aikanrailway")
 //*/
-
-const k=JSON.parse(readFileSync("resource/timetable/aikanjikoku-to-kozoji.json",{encoding:"utf-8"}));
-const o=JSON.parse(readFileSync("resource/timetable/aikanjikoku-to-okazaki.json",{encoding:"utf-8"}));
-
-const t:{c:string,t:string,tt:any[]}={
-    c: "aikanrailway",
-    t: "aikanrailway",
-    tt: []
-};
-
-for(let i=0;i<k["tt"].length;i++){
-    t.tt.push(k["tt"][i]);
-}
-for(let i=0;i<o["tt"].length;i++){
-    t.tt.push(o["tt"][i]);
-}
-
-t.tt.sort((a,b)=>parseInt(a["id"].split("H")[0])-parseInt(b["id"].split("H")[0]))
-
-writeFileSync("resource/timetable/aikanrailway.json",JSON.stringify(t,null,4),{encoding:"utf-8"});
+/*
+const rawdata=readFileSync("resource/Rail.json",{encoding:"utf-8"});
+const data=parsetoMap<Company>(rawdata,Company.parse);
+const t=data.get("jrwest")!.getTrainline("sanyoshinkansen")!;
+writeFileSync("tete.json",JSON.stringify(t.toGeojson().features),{encoding:"utf-8"});
+//*/
