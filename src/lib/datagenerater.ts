@@ -142,8 +142,7 @@ function geojsontorailpaths(geojson:string){
 /**
  * ルート生成
  */
-function getRoute(t:TrainLine,s:string[],times
-    :string[]){
+function getRoute(t:TrainLine,s:string[],times:string[]){
 
     const G=new Map<string,{s:string,d:number}[]>();
 
@@ -339,9 +338,11 @@ const rawdata=readFileSync("resource/Rail.json",{encoding:"utf-8"});
 const data=parsetoMap<Company>(rawdata,Company.parse);
 makeTrains(data.get("aikanrailway")!.getTrainline("aikanrailway")!,"aikanrailway")
 //*/
-/*
+
 const rawdata=readFileSync("resource/Rail.json",{encoding:"utf-8"});
 const data=parsetoMap<Company>(rawdata,Company.parse);
-const t=data.get("jrwest")!.getTrainline("sanyoshinkansen")!;
+const t=data.get("jrcentral")!.getTrainline("tokaidoshinkansen")!;
+/*
 writeFileSync("tete.json",JSON.stringify(t.toGeojson().features),{encoding:"utf-8"});
 //*/
+writeFileSync("tmp.json",JSON.stringify(getRoute(t,["003768.3","005456.1","006912.2"],["18:00","19:23","20:12"]),null,4),{encoding:"utf-8"});

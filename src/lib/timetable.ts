@@ -85,10 +85,11 @@ export class Train{
             }
         }
 
+        
+        const {pos,color}=route.getPos(t,this.trainline!);
         const param:GeoJsonProperties={
-            "color":this.color.toString()
+            "color":color
         };
-        const pos=route.getPos(t,this.trainline!);
         //console.log(pos.toString()+",")
 
         const geo=turf.geometry("Point",[pos.lng,pos.lat]);
@@ -269,17 +270,22 @@ export class TrainRoute{
         const ed=this.cache[this.cache.length-1].length()/2;
 
         if(43200000<t){
-            return this.cache[0].getPos(sd);
+            return {pos:this.cache[0].getPos(sd),color:"#0f0f0f"};
         }
         else if(dt<=t){
-            return this.cache[this.cache.length-1].getPos(ed);
+            return {pos:this.cache[this.cache.length-1].getPos(ed),color:"#0f0f00"};
         }
 
         /**
          * 現在のスタート位置からの距離
          */
-        let d=(this.routelength[this.routelength.length-1]-sd-ed)*(t/dt)+sd;
+        //let d=(this.routelength[this.routelength.length-1]-sd-ed)*(t/dt)+sd;
+        const D=(this.routelength[this.routelength.length-1]-sd-ed);
+        const A=0.000000001;
+        const st=(dt-Math.sqrt(dt*dt-4*D/A))/2;
 
+        let d=(t<=st?(A*t*t)/2:(t<=(dt-st)?(A*st*t-(A*st*st)/2):(D-(A/2*(dt-t)*(dt-t)))))+sd;
+        //console.log(`st:${st} d:${d}`);
         let l=0;
         let r=this.routelength.length-1;
         while(l<=r){
@@ -296,7 +302,7 @@ export class TrainRoute{
         }
         d-=this.routelength[l];
         const pos=this.cache[l].getPos(this.route[l].direction==-1?this.cache[l].length()-d:d);
-        return pos;
+        return {pos,color:(t<=st?"#ff0000":(t<=(dt-st)?"#00ff00":"#0000ff"))};
     }
 
     /**
