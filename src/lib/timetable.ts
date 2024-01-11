@@ -24,12 +24,6 @@ export class Train{
      * 行先
      */
     readonly destination:string;
-    /**
-     * 始発駅  
-     * 駅コード.乗り場
-     */
-    readonly originstation:string;
-    readonly homeindex:number;
 
     /**
      * 両数
@@ -47,29 +41,23 @@ export class Train{
 
     readonly timetable:TrainRoute[];
 
-    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,originstation:string);
-    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,originstation:string,color:Color,homeindex:number);
-    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,originstation:string,color?:Color,homeindex?:number){
+    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,carlen:number);
+    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,carlen:number,color:Color);
+    constructor(id:string,timetable:TrainRoute[],daytype:DayType[],trainnumber:string,type:string,destination:string,carcount:number,carlen:number,color?:Color){
         this.id=id;
         this.daytype=daytype;
         this.trainnumber=trainnumber;
         this.type=type;
         this.destination=destination;
-        this.originstation=originstation;
         this.car=carcount;
         this.timetable=timetable;
-        if(typeof homeindex==="undefined"){
-            this.homeindex=0;
-        }
-        else{
-            this.homeindex=homeindex;
-        }
         if(typeof color==="undefined"){
             this.color=new Color("#000000");
         }
         else{
             this.color=color;
         }
+        this.carlen=carlen;
     }
 
     public ani(timestamp:number){
@@ -86,11 +74,11 @@ export class Train{
         }
 
         
-        const {pos,color}=route.getPos(t,this.trainline!);
+        const {pos,color,angle}=route.getPosBytime(t,this.trainline!);
         const param:GeoJsonProperties={
-            "color":color
+            "color":color,
+            "angle":angle
         };
-        //console.log(pos.toString()+",")
 
         const geo=turf.geometry("Point",[pos.lng,pos.lat]);
         return [turf.feature(geo,param)];
@@ -116,8 +104,8 @@ export class Train{
             if(typeof any["d"]!=="string"){
                 throw Error("\"d\" not found.");
             }
-            if(typeof any["os"]!=="string"){
-                throw Error("\"os\" not found.");
+            if(typeof any["cl"]!=="number"){
+                //throw Error("\"cl\" not found.");
             }
             if(typeof any["cn"]!=="number"){
                 throw Error("\"cn\" not found.");
@@ -132,7 +120,7 @@ export class Train{
             }
             const color=new Color(any["c"]);
 
-            return new Train(any["id"],tt,any["w"],any["n"],any["y"],any["d"],any["cn"],any["os"],color,0);
+            return new Train(any["id"],tt,any["w"],any["n"],any["y"],any["d"],any["cn"],20,color);
         }
     }
 
@@ -147,9 +135,9 @@ export class Train{
             "n":this.trainnumber,
             "y":this.type,
             "d":this.destination,
-            "os":this.originstation,
             "c":this.color,
             "cn":this.car,
+            "cl":this.carlen,
             "tt":this.timetable
         }
     }
@@ -178,7 +166,7 @@ export class TrainRoute{
     /**
      * レールパスのキャッシュ
      */
-    public cache:RailPath[];
+    private cache:RailPath[]=[];
 
     /**
      * ルートの累積和配列
@@ -202,7 +190,6 @@ export class TrainRoute{
         }
         this.route=route;
         this.routelength=[0];
-        this.cache=[];
     }
 
     public static parse(any:any):TrainRoute{
@@ -242,50 +229,17 @@ export class TrainRoute{
         }
     }
 
-    /**
-     * 現在の座標を取得
-     * @param time 現在時間 ms
-     */
-    public getPos(time:number,trainline:TrainLine){
-
+    public loadTrainline(trainline:TrainLine){
         if(this.cache.length==0){
             for(let i=0;i<this.route.length;i++){
                 this.cache.push(trainline.getRailPath(this.route[i].id)!);
                 this.routelength.push(this.cache[i].length()+this.routelength[i]);
             }
         }
+    }
 
-        time=time%86400000;
-        const dt=((this.arrivaltime-this.departuretime)%86400000+86400000)%86400000;
-        const t=((time-this.departuretime)%86400000+86400000)%86400000;
-
-        /**
-         * スタート位置
-         */
-        const sd=this.cache[0].length()/2;
-        /**
-         * 終了位置
-         * 終了パスの長さの半分
-         */
-        const ed=this.cache[this.cache.length-1].length()/2;
-
-        if(43200000<t){
-            return {pos:this.cache[0].getPos(sd),color:"#0f0f0f"};
-        }
-        else if(dt<=t){
-            return {pos:this.cache[this.cache.length-1].getPos(ed),color:"#0f0f00"};
-        }
-
-        /**
-         * 現在のスタート位置からの距離
-         */
-        //let d=(this.routelength[this.routelength.length-1]-sd-ed)*(t/dt)+sd;
-        const D=(this.routelength[this.routelength.length-1]-sd-ed);
-        const A=0.000000001;
-        const st=(dt-Math.sqrt(dt*dt-4*D/A))/2;
-
-        let d=(t<=st?(A*t*t)/2:(t<=(dt-st)?(A*st*t-(A*st*st)/2):(D-(A/2*(dt-t)*(dt-t)))))+sd;
-        //console.log(`st:${st} d:${d}`);
+    public getPos(d:number,trainline:TrainLine){
+        this.loadTrainline(trainline);
         let l=0;
         let r=this.routelength.length-1;
         while(l<=r){
@@ -302,7 +256,54 @@ export class TrainRoute{
         }
         d-=this.routelength[l];
         const pos=this.cache[l].getPos(this.route[l].direction==-1?this.cache[l].length()-d:d);
-        return {pos,color:(t<=st?"#ff0000":(t<=(dt-st)?"#00ff00":"#0000ff"))};
+        return pos;
+    }
+
+    /**
+     * 現在の座標を取得
+     * @param time 現在時間 ms
+     */
+    public getPosBytime(time:number,trainline:TrainLine){
+        this.loadTrainline(trainline);
+        time=time%86400000;
+        const dt=((this.arrivaltime-this.departuretime)%86400000+86400000)%86400000;
+        const t=((time-this.departuretime)%86400000+86400000)%86400000;
+
+        /**
+         * スタート位置
+         */
+        const sd=this.cache[0].length()/2;
+        /**
+         * 終了位置
+         * 終了パスの長さの半分
+         */
+        const ed=this.cache[this.cache.length-1].length()/2;
+
+        if(43200000<t){
+            return {pos:this.cache[0].getPos(sd),color:"#0f0f0f",angle:0};
+        }
+        else if(dt<=t){
+            return {pos:this.cache[this.cache.length-1].getPos(ed),color:"#0f0f00",angle:0};
+        }
+
+        /**
+         * 現在のスタート位置からの距離
+         */
+        //let d=(this.routelength[this.routelength.length-1]-sd-ed)*(t/dt)+sd;
+        const D=(this.routelength[this.routelength.length-1]-sd-ed);
+        // A km/ms^2
+        let A=0.0000000005;
+        let st=(dt-Math.sqrt(dt*dt-4*D/A))/2;
+
+        if(dt*dt-4*D/A<=0){
+            A=4*D/(dt*dt);
+            st=dt/2;
+        }
+
+        const d=(t<=st?(A*t*t)/2:(t<=(dt-st)?(A*st*t-(A*st*st)/2):(D-(A/2*(dt-t)*(dt-t)))))+sd;
+        //console.log(`st:${st} d:${d}`);
+        const pos=this.getPos(d,trainline);
+        return {pos,color:(t<=st?"#ff0000":(t<=(dt-st)?"#00ff00":"#0000ff")),angle:pos.angle(this.getPos(d+0.02,trainline))};
     }
 
     /**
@@ -326,7 +327,6 @@ export class TrainRoute{
         const h=Math.floor(time/3600);
         return ("00"+h.toString()).slice(-2)+":"+("00"+m.toString()).slice(-2)+":"+("00"+s.toString()).slice(-2);
     }
-
 
     /**
      * JSON化

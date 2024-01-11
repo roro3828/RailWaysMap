@@ -68,6 +68,16 @@ export class Pos{
         return turf.distance([this.lng,this.lat],[pos.lng,pos.lat]);
     }
 
+    public angle(pos:Pos){
+        const angle=turf.angle([this.lng,90],[this.lng,this.lat],[pos.lng,pos.lat]);
+        if(this.lng<pos.lng){
+            return angle;
+        }
+        else{
+            return -angle;
+        }
+    }
+
     /**
      * 現在地からposまでのベクトル
      * @param pos 

@@ -50,7 +50,7 @@ export default function SimpleMap() {
             setMap,
             mapContainer,
         }: {
-            setMap: any;
+            setMap: Function;
             mapContainer: any;
         }) => {
             const map = new mapboxgl.Map({
@@ -59,6 +59,7 @@ export default function SimpleMap() {
                 zoom: 15,
                 maxPitch:0,
                 minZoom:5,
+                maxZoom:20,
                 style: 'mapbox://styles/roro3828/clqvrjl0v005c01pmgmb62axt',
             });
             // 言語変更設定参考
@@ -67,38 +68,54 @@ export default function SimpleMap() {
             map.addControl(language);
 
             map.on('load', () => {
-                setMap(map);
-                map.resize();const animationsourceid="ani";
+                const animationsourceid="ani";
                 map.addSource(
                     animationsourceid,
                     {
                         "type":"geojson",
                         "data":{
                             "type": "FeatureCollection",
-                            "features": []
+                            "features": animation.getFeatures()
                         }
                     }
                 )
-                map.addLayer({
-                    'id':animationsourceid,
-                    'source':animationsourceid,
-                    'type': 'circle',
-                    "layout":{
-                        "visibility":"visible"
-                    },
-                    'paint': {
-                        'circle-radius': 10,
-                        'circle-color': ["get","color"],
+                animation.mapsource=map.getSource(animationsourceid) as mapboxgl.GeoJSONSource;
+
+                map.loadImage("/train.png",(error,image)=>{
+                    if(error){
+                        throw error;
                     }
+
+                    map.addImage("train",image!);
+
+                    map.addLayer({
+                        'id':animationsourceid,
+                        'source':animationsourceid,
+                        'type': "symbol",
+                        "layout":{
+                            "visibility":"visible",
+                            "icon-image":"train",
+                            "icon-size":1,
+                            "icon-rotate":["get","angle"],
+                            "icon-rotation-alignment":"map",
+                            "icon-allow-overlap":true
+                        }
+                    });
                 });
+                setMap(map);
+                map.resize();
             });
 
             map.on("click",(e)=>{
-                console.log(e.lngLat);
-                const f=map.queryRenderedFeatures(e.point);
-                for(let i=0;i<f.length;i++){
-                    console.log(f[i].properties);
+                const result=map.queryRenderedFeatures(e.point,{layers:["ani"]});
+
+                if (result.length === 0) {
+                    return;
                 }
+                const popup = new mapboxgl.Popup({ offset: 20 })
+                .setLngLat(e.lngLat)
+                .setText(result[0].properties!.angle)
+                .addTo(map);
             })
         };
 
@@ -111,6 +128,11 @@ export default function SimpleMap() {
 
     return (
         <>
+            <div className='z-50 w-full h-screen bg-slate-800 transition-all duration-100' hidden={!isLoading}>
+                <span className=' align-middle text-white text-5xl'>
+                    Loading<div className="animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent"/>
+                </span>
+            </div>
             <div ref={mapContainer} className='w-full h-screen' />
         </>
     );
@@ -124,8 +146,9 @@ export default function SimpleMap() {
             return;
         }
         console.log(`load`);
-
         const animationsourceid="ani";
+        
+        console.log(map.getSource("ani"))
         animation.init(map,animationsourceid);
         setLoading(false);
         loadTrains();

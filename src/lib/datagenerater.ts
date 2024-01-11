@@ -304,7 +304,7 @@ function makeTrains(t:TrainLine,c:string){
             if(hc=="4"){
                 days.push("Holiday");
             }
-            const train=new Train(trainnumber,timetable,days,trainnumber,"Local","Okazaki",4,stations[0],t.color,0);
+            const train=new Train(trainnumber,timetable,days,trainnumber,"Local","Okazaki",4,20,t.color);
             trains.push(train);
         }
         if(wc=="2"||sc=="2"||hc=="2"){
@@ -318,7 +318,7 @@ function makeTrains(t:TrainLine,c:string){
             if(hc=="2"){
                 days.push("Holiday");
             }
-            const train=new Train(trainnumber,timetable,days,trainnumber,"Local","Okazaki",2,stations[0],t.color,0);
+            const train=new Train(trainnumber,timetable,days,trainnumber,"Local","Okazaki",2,20,t.color);
             trains.push(train);
         }
 
@@ -341,8 +341,10 @@ makeTrains(data.get("aikanrailway")!.getTrainline("aikanrailway")!,"aikanrailway
 
 const rawdata=readFileSync("resource/Rail.json",{encoding:"utf-8"});
 const data=parsetoMap<Company>(rawdata,Company.parse);
-const t=data.get("jrcentral")!.getTrainline("tokaidoshinkansen")!;
-/*
-writeFileSync("tete.json",JSON.stringify(t.toGeojson().features),{encoding:"utf-8"});
-//*/
-writeFileSync("tmp.json",JSON.stringify(getRoute(t,["003768.3","005456.1","006912.2"],["18:00","19:23","20:12"]),null,4),{encoding:"utf-8"});
+const t=data.get("jrwest")!.getTrainline("sanyoshinkansen")!;
+const m=new Map<string,string>();
+t.stations.forEach((s)=>{
+    m.set(s.name,s.id);
+})
+
+console.log(JSON.stringify(Object.fromEntries(m),null,4));
